@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Ad Delivery Analytics</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div class="dashboard">
+
+    <header class="header">
+      <div class="header-left">
+        <h1>广告投放数据中台</h1>
+        <p class="header-sub">实时广告活动效果监控</p>
+      </div>
+      <div class="header-right">
+        <span class="header-status">
+          <span class="dot live"></span>
+          运行中
+        </span>
+        <span class="header-clock" id="update-time">--</span>
+      </div>
+    </header>
+
+    <section class="section kpi-section">
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <span class="kpi-label">曝光</span>
+          <span class="kpi-value" id="kpi-impressions">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">点击</span>
+          <span class="kpi-value" id="kpi-clicks">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">转化</span>
+          <span class="kpi-value" id="kpi-conversions">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">独立用户</span>
+          <span class="kpi-value" id="kpi-uv">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">消耗</span>
+          <span class="kpi-value" id="kpi-cost">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">收入</span>
+          <span class="kpi-value" id="kpi-revenue">--</span>
+        </div>
+        <div class="kpi-card kpi-accent">
+          <span class="kpi-label">CTR</span>
+          <span class="kpi-value" id="kpi-ctr">--</span>
+        </div>
+        <div class="kpi-card kpi-accent">
+          <span class="kpi-label">ROI</span>
+          <span class="kpi-value" id="kpi-roi">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="chart-row chart-row--2col">
+        <div class="chart-card chart-card--wide">
+          <h3>小时趋势</h3>
+          <p class="chart-desc">最近 24 小时曝光、点击、转化趋势</p>
+          <div id="chart-hourly"></div>
+        </div>
+        <div class="chart-card">
+          <h3>转化漏斗</h3>
+          <p class="chart-desc">曝光到点击到转化的路径分析</p>
+          <div id="chart-funnel"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="chart-row chart-row--3col">
+        <div class="chart-card">
+          <h3>地域分布</h3>
+          <div id="chart-region"></div>
+        </div>
+        <div class="chart-card">
+          <h3>设备分布</h3>
+          <div id="chart-device"></div>
+        </div>
+        <div class="chart-card">
+          <h3>广告排行</h3>
+          <div id="chart-topAds"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="chart-row chart-row--2col">
+        <div class="chart-card chart-card--wide">
+          <h3>活动效果排行</h3>
+          <table class="table" id="table-campaigns">
+            <thead><tr>
+              <th>活动</th><th class="num">曝光</th><th class="num">UV</th><th class="num">CTR</th><th class="num">CVR</th><th class="num">消耗</th><th class="num">收入</th><th class="num">ROI</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="chart-card">
+          <h3>用户留存</h3>
+          <p class="chart-desc">初曝后每日活跃用户留存</p>
+          <div id="chart-retention"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Go + Gin + ClickHouse + Kafka</span>
+      <span class="footer-sep">&middot;</span>
+      <span>Ad Delivery Analytics v1.0</span>
+    </footer>
+
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

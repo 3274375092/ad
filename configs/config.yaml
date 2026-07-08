@@ -1,0 +1,39 @@
+app:
+  name: ad-data-platform
+  env: dev
+  version: "1.0.0"
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  mode: debug
+  read_timeout: 30
+  write_timeout: 30
+
+clickhouse:
+  addr: "127.0.0.1:9000"
+  http_addr: "127.0.0.1:8123"
+  database: ad_platform
+  username: default
+  password: "123456"
+  max_open_conns: 50
+  max_idle_conns: 10
+  dial_timeout: 10
+  read_timeout: 30
+  write_timeout: 30
+
+kafka:
+  brokers:
+    - "127.0.0.1:9092"
+  topic: ad_events
+  group_id: ad-platform-consumer
+  num_partitions: 3
+  replication_factor: 1
+  batch_size: 500
+  batch_timeout_ms: 1000
+
+log:
+  level: info
+  format: console
+  output: stdout
+  file_path: ""
