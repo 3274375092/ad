@@ -49,7 +49,11 @@
 
 ```
 ad-data-platform/
-├── cmd/all/main.go                  # 一键启动（api + consumer + producer 三合一）
+├── cmd/
+│   ├── all/main.go                  # 一键启动（三合一）
+│   ├── server/main.go               # 独立 API 服务
+│   ├── consumer/main.go             # 独立 Kafka Consumer
+│   └── producer/main.go             # 独立 Mock Producer
 ├── internal/
 │   ├── handler/                     # 9 个 REST 路由
 │   ├── service/                     # 参数校验、接口抽象（方便单测 Mock）
@@ -72,21 +76,28 @@ ad-data-platform/
 
 ## 快速开始
 
-```bash
-# 1. 启动中间件
-cd deploy
-docker-compose up -d
+### 方式一：一根命令启动（本地开发推荐）
 
-# 2. 初始化 ClickHouse 表
+```bash
+cd deploy && docker-compose up -d
+docker exec -i ad-clickhouse clickhouse-client --password 123456 < ../scripts/init_clickhouse.sql
+cd .. && go build -o bin/ad.exe ./cmd/all && .\bin\ad.exe
+# http://localhost:8080/
+```
+
+`ad.exe` 把 Producer、Consumer、Server 三个 goroutine 包在一起，启动时自动回填 24 小时历史数据。
+
+### 方式二：拆开三个进程（模拟生产环境）
+
+```bash
+cd deploy && docker-compose up -d
 docker exec -i ad-clickhouse clickhouse-client --password 123456 < ../scripts/init_clickhouse.sql
 
-# 3. 一键启动（回填 24h 历史数据 + 实时产数 + API 服务）
-cd ..
-go build -o bin/ad.exe ./cmd/all
-.\bin\ad.exe
-
-# 4. 浏览器打开
-http://localhost:8080/
+# 三个终端分别启动
+.\bin\consumer.exe
+.\bin\server.exe
+.\bin\producer.exe -qps=200
+# http://localhost:8080/
 ```
 
 ---
