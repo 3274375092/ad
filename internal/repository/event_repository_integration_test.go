@@ -19,6 +19,7 @@ import (
 	"ad-platform/internal/model"
 	"ad-platform/pkg/clickhouse"
 
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -162,6 +163,110 @@ func TestIntegration_RegionDistribution(t *testing.T) {
 // =====================================================
 // 性能基准测试（需要在有数据的 CH 上跑）
 // =====================================================
+
+func printCompression(ctx context.Context, conn driver.Conn, t testing.TB) {
+	t.Helper()
+	type row struct {
+		Name                string  `ch:"name"`
+		TotalRows           uint64  `ch:"total_rows"`
+		TotalBytes          uint64  `ch:"total_bytes"`
+		CompressedBytes     uint64  `ch:"compressed_bytes"`
+		UncompressedBytes   uint64  `ch:"uncompressed_bytes"`
+		CompressionRatio    float64 `ch:"compression_ratio"`
+	}
+	var rows []row
+	if err := conn.Select(ctx, &rows, `
+		SELECT
+			'raw' AS name,
+			sum(rows) AS total_rows,
+			sum(data_uncompressed_bytes+data_compressed_bytes) AS total_bytes,
+			sum(data_compressed_bytes) AS compressed_bytes,
+			sum(data_uncompressed_bytes) AS uncompressed_bytes,
+			round(sum(data_uncompressed_bytes) / sum(data_compressed_bytes), 2) AS compression_ratio
+		FROM system.parts
+		WHERE active AND database='ad_platform' AND table='ad_events_raw'
+	`); err != nil {
+		t.Logf("compression stats: %v", err)
+		return
+	}
+	for _, r := range rows {
+		t.Logf("[compress] %s rows=%d total=%s compression_ratio=%.1f:1 compressed=%s uncompressed=%s",
+			r.Name, r.TotalRows,
+			formatBytes(r.TotalBytes),
+			r.CompressionRatio,
+			formatBytes(r.CompressedBytes),
+			formatBytes(r.UncompressedBytes))
+	}
+}
+
+func formatBytes(n uint64) string {
+	const unit = 1024
+	if n < unit { return fmt.Sprintf("%d B", n) }
+	div, exp := uint64(unit), 0
+	for n2 := n / unit; n2 >= unit; n2 /= unit { div *= unit; exp++ }
+	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
+}
+
+func seedMillionEvents(ctx context.Context, helper *TestHelper, count int, t testing.TB) {
+	batchSize := 5000
+	batch := make([]model.AdEvent, 0, batchSize)
+	now := time.Now().UTC()
+	camps := []string{"camp_1001","camp_1002","camp_1003","camp_1004","camp_1005"}
+	regions := []string{"北京","上海","广州","深圳","杭州"}
+	types := []string{"impression","click","conversion"}
+	for i := 0; i < count; i++ {
+		ts := now.Add(-time.Duration(count-i) * time.Millisecond)
+		ev := MakeEvent(types[i%3], camps[i%5], fmt.Sprintf("u_%d", i%50000), regions[i%5], ts)
+		batch = append(batch, ev)
+		if len(batch) >= batchSize {
+			if err := helper.SeedEvents(ctx, batch); err != nil {
+				t.Fatalf("seed failed: %v", err)
+			}
+			batch = batch[:0]
+		}
+	}
+	if len(batch) > 0 {
+		if err := helper.SeedEvents(ctx, batch); err != nil {
+			t.Fatalf("seed failed: %v", err)
+		}
+	}
+	t.Logf("seeded %d events", count)
+}
+
+func TestIntegration_StorageCompression(t *testing.T) {
+	repo, helper := setupCH(t)
+	ctx := context.Background()
+	seedMillionEvents(ctx, helper, 200_000, t)
+	printCompression(ctx, repo.conn, t)
+}
+
+func BenchmarkIntegration_BatchInsert(b *testing.B) {
+	if os.Getenv("INTEGRATION") == "" {
+		b.Skip("set INTEGRATION=1")
+	}
+	_, helper := setupCH(b)
+	ctx := context.Background()
+	repo := NewEventRepository(clickhouse.DB())
+	now := time.Now().UTC()
+
+	for _, batchSize := range []int{100, 500, 1000, 5000} {
+		b.Run(fmt.Sprintf("batch_%d", batchSize), func(b *testing.B) {
+			batch := make([]model.AdEvent, 0, batchSize)
+			for i := 0; i < batchSize; i++ {
+				batch = append(batch, MakeEvent("impression", "camp_1001",
+					fmt.Sprintf("u_%d", i), "北京", now))
+			}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if err := repo.BatchInsert(ctx, batch); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.StopTimer()
+			_ = helper.Truncate(ctx)
+		})
+	}
+}
 
 func BenchmarkIntegration_RealtimeOverview(b *testing.B) {
 	if os.Getenv("INTEGRATION") == "" {

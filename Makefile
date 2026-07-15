@@ -1,4 +1,4 @@
-.PHONY: help tidy build run-server run-consumer run-producer init-ch docker-up docker-down docker-logs clean test test-unit test-integration test-coverage
+.PHONY: help tidy build run-server run-consumer run-producer init-ch docker-up docker-down docker-logs clean test test-unit test-integration test-coverage bench-batch bench-query bench-all
 
 BIN_DIR := bin
 
@@ -83,3 +83,19 @@ test-coverage:
 clean:
 	rm -rf $(BIN_DIR)
 	rm -rf coverage
+
+# ============================================================
+# Benchmarks（需要 ClickHouse 运行且已灌入数据）
+# ============================================================
+
+# 写入吞吐基准测试
+bench-batch:
+	INTEGRATION=1 go test -v -tags=integration -bench=BenchmarkIntegration_BatchInsert -benchmem -benchtime=5s ./internal/repository/...
+
+# 查询性能基准测试
+bench-query:
+	INTEGRATION=1 go test -v -tags=integration -bench=BenchmarkIntegration_RealtimeOverview -benchmem -benchtime=3s ./internal/repository/...
+
+# 全部 benchmark
+bench-all:
+	INTEGRATION=1 go test -v -tags=integration -bench=. -benchmem -benchtime=3s ./internal/repository/...

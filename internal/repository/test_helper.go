@@ -36,11 +36,7 @@ func (h *TestHelper) Truncate(ctx context.Context) error {
 }
 
 func (h *TestHelper) exec(ctx context.Context, query string, args ...interface{}) error {
-	rows, err := h.conn.Query(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	return rows.Close()
+	return h.conn.Exec(ctx, query, args...)
 }
 
 // SeedEvents 写入测试事件
